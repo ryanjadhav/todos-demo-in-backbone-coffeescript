@@ -109,7 +109,61 @@ $ ->
     ### Application View ###
     class AppView extends Backbone.View
 
+      el_tag = '#todo-app'
+      el: $(el_tag)
 
+      statsTemplate: _.template( $('#stats_template').html() ) 
+
+      events:
+        "keypress #new-todo"  : "createOnEnter",
+        "click .todo-clear a" : "clearCompleted"
+
+      # Initalize and bind events to the TodoList. Load Todos that might be in local storage.
+      initialize: =>
+        @input = this.$('new-todo')
+        Todos.bind("add", @addOne)
+        Todos.bind("reset", @addAll)
+        Todos.bind("all", @render)
+
+        Todos.fetch()
+
+      # Render the stats for the App. 
+      render: =>
+        this.$('#todo-stats').html( @statsTemplate({
+          total: Todos.length
+          done: Todos.done().length
+          remaining: Todos.remaining().length
+        }))
+
+      # Add a Todo to the list by creating a view for it and appending it to the <ul>
+      addOne: (todo) => 
+        view = new TodoView({ model: todo })
+        this.$('#todo-list').append( view.render().el )
+
+      # Add all Todos to the list
+      addAll: =>
+        Todos.each(@addOne)
+
+      # Generate new attributes for a new Todo Item
+      newAttributes: ->
+        return {
+            content: @input.val(),
+            order:   Todos.nextOrder(),
+            done:    false
+        }
+
+      # Listen for the enter key to be pressed and create a new Todo item
+      createOnEnter: (e) ->
+        return if (e.keyCode != 13)
+        Todos.create( @newAttributes() )
+        @input.val('')
+
+      # Destroy all Todos marked 'done'
+      clearCompleted: ->
+        _.each(Todos.done(), (todo) ->
+          todo.clear()
+        )
+        return false
 
   Todos = new TodoList
   App = new AppView()
